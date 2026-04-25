@@ -4,22 +4,20 @@ import { pool } from "../../config/db.js"
 
 export const SignUpController = async (c: any) => {
 
+    const conn = await pool.getConnection();
+
     try {
+
+        await conn.beginTransaction();
 
         const { full_name, email, password } = await c.req.valid('json')
 
-        if (!full_name || !email || !password) {
-            return c.json({ 
-                error: 'All fields are required' 
-            }, 400)
-        }
-
-        const [existing]: any[] = await pool.query(
+        const [existing]: any[] = await conn.query(
             `
                 SELECT 
                     user_id 
                 FROM 
-                    users 
+                    user
                 WHERE 
                     email = ?
             `,
@@ -27,34 +25,66 @@ export const SignUpController = async (c: any) => {
         )
 
         if (existing.length > 0) {
+            await conn.rollback();
             return c.json({ 
                 error: 'Email already registered' 
             }, 400)
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10)
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-        await pool.query(
+        const [userResult]: any = await conn.query(
             `
-                INSERT INTO 
-                    user (full_name, email, password) 
+                INSERT INTO  
+                    user (full_name, email, password_hash) 
                 VALUES 
                     (?, ?, ?)
             `,
             [full_name, email, hashedPassword]
         )
 
+        const userId = userResult.insertId;
+
+        const [workspaceResult]: any = await conn.query(
+            `
+                INSERT INTO 
+                    workspace (workspace_name, owner_id)
+                VALUES 
+                    (?, ?)
+            `,
+            [`${full_name}'s Workspace`, userId]
+        )
+
+        await conn.query(
+            `
+                INSERT INTO 
+                    workspace_member (workspace_id, user_id, role)
+                VALUES (?, ?, ?)
+            `,
+            [workspaceResult.insertId, userId, 'owner']
+        )
+
+        await conn.commit();
+
+
         return c.json({ 
-            message: 'User created successfully' 
+            success: true,
+            message: 'Registered successfully' 
         }, 201)
 
     }
 
     catch (err) {
+        await conn.rollback()
         console.error(err)
         return c.json({ 
+            success: false,
             error: 'Internal server error' 
         }, 500)
+    }
+    
+        finally {
+        conn.release()
     }
 
 
