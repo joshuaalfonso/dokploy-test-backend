@@ -66,7 +66,7 @@ export const logInController = async (c: any) => {
 
         // return token
         return c.json({
-            success: true,
+            success: true, 
             message: "Login successful",
             token,
             user: {
