@@ -28,8 +28,8 @@ var transport = nodemailer.createTransport({
     host: "smtp-relay.brevo.com",
     port: 587,
     auth: {
-      user: "a96aa0001@smtp-brevo.com",
-      pass: "ZrA85HRaBFh2jcy0"
+      user: "",
+      pass: ""
     } 
 });
 
@@ -38,7 +38,7 @@ var mailOptions = {
     to: 'marizzedanicca@gmail.com',
     // to: 'joshua025icloud@gmail.com',
     subject: 'Test Email', 
-    html: 'i love you',
+    html: 'test',
 };
 
 transport.sendMail(mailOptions, (error, info) => {
@@ -57,27 +57,3 @@ serve({
 })
 
 
-// const nodemailer = require("nodemailer");
-
-// var transport = nodemailer.createTransport({
-//     host: "smtp.zeptomail.com",
-//     port: 587,
-//     auth: {
-//     user: "emailapikey",
-//     pass: "wSsVR61z8xOiX/ovn2CqL+trmQ8EVgj+E0Qr2AOl7X+qTKuQ9cc4lhHIAAKmHKRNRzU4HWcS8Oh4kRxShDVY3Y9+yg0EACiF9mqRe1U4J3x17qnvhDzMW2RckRCPJIkOwglukmhmFswj+g=="
-//     }
-// });
-
-// var mailOptions = {
-//     from: '"Strive" <noreply@skadii-dev.org>',
-//     to: 'joshua025icloud@gmail.com',
-//     subject: 'Test Email',
-//     html: 'Test email sent successfully.',
-// };
-
-// transport.sendMail(mailOptions, (error, info) => {
-//     if (error) {
-//       return console.log(error);
-//     }
-//     console.log('Successfully sent');
-// });
