@@ -6,6 +6,7 @@ import { cors } from 'hono/cors';
 import { logInRoute } from './module/log-in/log-in.route.js';
 import { workspaceRoute } from './module/workspace/workspace.route.js';
 import { htmlVerifyTemplete, transport } from './config/smtp.js';
+import { verifyEmailRoute } from './module/verify/verify.route.js';
 
 
 
@@ -15,6 +16,7 @@ app.use(cors())
 
 app.route('sign-up', signUpRoute);
 app.route('log-in', logInRoute);
+app.route('verify', verifyEmailRoute);
 app.route('workspace', workspaceRoute);
 
 app.get('/', (c) => { 
@@ -22,11 +24,11 @@ app.get('/', (c) => {
 })
 
 app.post('/email', async (c) => {
-
+ 
   const mailOptions = { 
     from: '"Strive" <noreply@strive.skadii-dev.org>',
-    to: 'marizzedanicca@gmail.com',
-    subject: 'Test Email',
+    to: 'joshua025icloud@gmail.com',
+    subject: 'Email Verification',
     html: htmlVerifyTemplete, 
   }; 
 

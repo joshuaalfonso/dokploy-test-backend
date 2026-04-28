@@ -1,5 +1,7 @@
 import bcrypt from "bcryptjs"
 import { pool } from "../../config/db.js"
+import { randomInt } from "crypto";
+import { transport } from "../../config/smtp.js";
 
 
 export const SignUpController = async (c: any) => {
@@ -27,7 +29,8 @@ export const SignUpController = async (c: any) => {
         if (existing.length > 0) {
             await conn.rollback();
             return c.json({ 
-                error: 'Email already registered' 
+                success: false,
+                message: 'Email already registered' 
             }, 400)
         }
 
@@ -44,6 +47,37 @@ export const SignUpController = async (c: any) => {
         )
 
         const userId = userResult.insertId;
+
+        const code = randomInt(100000, 999999).toString();
+
+        const hashedCode = await bcrypt.hash(code, 10);
+
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+        await conn.query(
+            `
+            INSERT INTO 
+                email_verification (user_id, code_hash, expires_at)
+            VALUES 
+                (?, ?, ?)
+            `,
+            [userId, hashedCode, expiresAt]
+        )
+
+        const mailOptions = { 
+            from: '"Strive" <noreply@strive.skadii-dev.org>',
+            to: email,
+            subject: 'Email Verification',
+            html: `<p>Your verification code is: ${code}</p>`
+        }; 
+
+        await transport.sendMail(mailOptions);
+
+        // await sendEmail({
+        //     to: email,
+        //     subject: 'Verify your email',
+        //     text: `Your verification code is: ${code}`
+        // })
 
         const [workspaceResult]: any = await conn.query(
             `
@@ -83,9 +117,12 @@ export const SignUpController = async (c: any) => {
         }, 500)
     }
     
-        finally {
+    finally {
         conn.release()
     }
 
 
 }
+
+
+

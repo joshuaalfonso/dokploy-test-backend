@@ -19,7 +19,7 @@ export const logInController = async (c: any) => {
         const [rows]: any = await pool.execute(
             `
                 SELECT 
-                    user_id, email, full_name, password_hash 
+                    user_id, email, full_name, is_verified ,password_hash 
                 FROM 
                     user 
                 WHERE 
@@ -31,7 +31,11 @@ export const logInController = async (c: any) => {
         const user = rows[0];
 
         if (!user) {
-            return c.json({ message: "Invalid credentials" }, 401);
+            return c.json({ success: false, message: "Invalid credentials" }, 401);
+        }
+
+        if (user.is_verified != 1) {
+            return c.json({ success: false, message: "Email is not verified" }, 401);
         }
 
         const [oldestWorkspace]: any = await pool.execute(
