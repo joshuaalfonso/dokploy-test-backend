@@ -5,7 +5,8 @@ import { signUpRoute } from './module/sign-up/sign-up.route.js';
 import { cors } from 'hono/cors';
 import { logInRoute } from './module/log-in/log-in.route.js';
 import { workspaceRoute } from './module/workspace/workspace.route.js';
-import nodemailer from 'nodemailer'
+import { htmlVerifyTemplete, transport } from './config/smtp.js';
+
 
 
 const app = new Hono();
@@ -16,37 +17,43 @@ app.route('sign-up', signUpRoute);
 app.route('log-in', logInRoute);
 app.route('workspace', workspaceRoute);
 
-app.get('/', (c) => {
+app.get('/', (c) => { 
   return c.text('Hello Hono!')
 })
 
+app.post('/email', async (c) => {
 
-await testConnection();
-
-
-var transport = nodemailer.createTransport({
-    host: "smtp-relay.brevo.com",
-    port: 587,
-    auth: {
-      user: "",
-      pass: ""
-    } 
-});
-
-var mailOptions = {
+  const mailOptions = { 
     from: '"Strive" <noreply@strive.skadii-dev.org>',
     to: 'marizzedanicca@gmail.com',
-    // to: 'joshua025icloud@gmail.com',
-    subject: 'Test Email', 
-    html: 'test',
-};
+    subject: 'Test Email',
+    html: htmlVerifyTemplete, 
+  }; 
 
-transport.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      return console.log(error);
-    }
-    console.log('Successfully sent');
+  try {
+
+    const info = await transport.sendMail(mailOptions);
+
+    return c.json({
+      success: true,
+      message: 'Email sent successfully',
+      info
+    });
+
+  } 
+  
+  catch (err) {
+
+    return c.json({
+      success: false,
+      message: 'Failed to send email',
+    });
+
+  }
+
 });
+
+await testConnection();
 
 
 serve({
