@@ -78,10 +78,10 @@ export const logInController = async (c: any) => {
                 email: user.email,
                 full_name: user.full_name,
                 default_workspace: oldestWorkspace[0].owner_id
-            },
+            }, 
         });
 
-    } catch (err) {
+    } catch (err) { 
 
         return c.json({ 
             message: "Server error", 

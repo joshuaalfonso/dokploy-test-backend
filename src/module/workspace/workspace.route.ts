@@ -1,8 +1,8 @@
 import { Hono } from "hono";
-import { getWorkspaceByUserController, getWorkspaceController } from "./workspace.controller.js";
+import { createWorkspaceController, getWorkspaceByUserController, getWorkspaceController } from "./workspace.controller.js";
 import z from "zod";
 import { validator } from "../../util/validate-zod.js";
-import { workspaceParamSchema } from "./workspace.schema.js";
+import { createWorkspaceSchema, workspaceParamSchema } from "./workspace.schema.js";
 import { authMiddleware } from "../../middleware/auth.js";
 
 
@@ -17,6 +17,14 @@ workspaceRoute.get('', authMiddleware, getWorkspaceController);
 workspaceRoute.get(
     '/:user_id', 
     authMiddleware,
-    validator('param', workspaceParamSchema), 
+    validator('param', workspaceParamSchema),  
     getWorkspaceByUserController
+)
+
+
+workspaceRoute.post(
+    '',
+    authMiddleware,
+    validator('json', createWorkspaceSchema),
+    createWorkspaceController
 )
