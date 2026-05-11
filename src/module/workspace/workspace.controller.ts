@@ -33,7 +33,7 @@ export const getWorkspaceController = async (c: any) => {
         return c.json({
             success: false,
             message: 'Failed to load workspace'
-        })
+        }, 500)
     }
 
 
@@ -72,7 +72,7 @@ export const getWorkspaceByUserController = async (c: any) => {
         return c.json({
             success: false,
             message: 'Failed to load workspace'
-        })
+        }, 500)
     }
 
 }

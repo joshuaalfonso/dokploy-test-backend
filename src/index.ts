@@ -8,6 +8,7 @@ import { workspaceRoute } from './module/workspace/workspace.route.js';
 import { htmlVerifyTemplete, transport } from './config/smtp.js';
 import { verifyEmailRoute } from './module/verify/verify.route.js';
 import { projectRoute } from './module/project/project.route.js';
+import { workspaceMemberRoute } from './module/workspace-member/workspace-member.route.js';
 
 
 
@@ -19,6 +20,7 @@ app.route('sign-up', signUpRoute);
 app.route('log-in', logInRoute);
 app.route('verify', verifyEmailRoute);
 app.route('workspace', workspaceRoute);
+app.route('workspace-member', workspaceMemberRoute);
 app.route('project', projectRoute);
 
 app.get('/', (c) => { 

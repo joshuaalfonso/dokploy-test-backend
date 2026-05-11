@@ -11,3 +11,9 @@ export const createProjectSchema = z.object({
   project_name: z.string().min(3),
   project_description: z.string().min(10)
 })
+
+export const updateProjectSchema = z.object({
+  project_id: z.number().min(1),
+  project_name: z.string().min(3),
+  project_description: z.string().min(10)
+})
