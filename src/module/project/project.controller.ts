@@ -92,123 +92,119 @@ export const getProjectByWorkspaceController = async (c: any) => {
 
 }
 
-function encodeCursor(data: any) {
-  return Buffer.from(JSON.stringify(data)).toString('base64')
-}
+// function encodeCursor(data: any) {
+//   return Buffer.from(JSON.stringify(data)).toString('base64')
+// }
 
-function decodeCursor(cursor: string) {
-  return JSON.parse(Buffer.from(cursor, 'base64').toString())
-}
+// function decodeCursor(cursor: string) {
+//   return JSON.parse(Buffer.from(cursor, 'base64').toString())
+// }
 
 
 export const getPaginatedProjectController = async (c: any) => {
 
-     const workspace_id = c.req.param('workspace_id');
+    const workspace_id = c.req.param('workspace_id');
 
-    const limit = Number(c.req.query('limit') || 10)
+    const limit = Number(c.req.query('limit')) || 10
+    const page = Number(c.req.query('page')) || 1
+    const offset = (page - 1) * limit
 
+    const search = c.req.query('search') || ''
     const status = c.req.query('status')
-    const search = c.req.query('search')
 
-    // asc | desc
-    const sort = (c.req.query('sort') || 'desc').toLowerCase()
+    // sorting
+    const allowedSortFields = new Set([
+        'created_at',
+        'project_name',
+        'status'
+    ]);
 
-    const cursor = c.req.query('cursor')
+    const sortByRaw = c.req.query('sortBy') || 'created_at'
+    const sortBy = allowedSortFields.has(sortByRaw)
+        ? sortByRaw
+        : 'created_at'
 
-    let sql = `
-        SELECT 
-            p.*,
-            w.workspace_name
-        FROM project p
-        LEFT JOIN workspace w 
-            ON p.workspace_id = w.workspace_id
-        WHERE w.workspace_id = ?
-    `
+    const sortDir = c.req.query('sortDir') === 'asc' ? 'ASC' : 'DESC'
 
-    const params: any[] = [workspace_id];
+    const conditions: string[] = [
+        `p.workspace_id = ?`
+    ]
 
+    const params: any[] = [workspace_id]
+
+    // search
+    if (search) {
+        conditions.push(`
+            (
+                p.project_name LIKE ?
+                OR p.project_description LIKE ?
+            )
+        `)
+
+        params.push(`%${search}%`, `%${search}%`)
+    }
+
+    // status
     if (status) {
-        sql += ` AND status = ?`
+        conditions.push(`p.status = ?`)
         params.push(status)
     }
 
-     if (search) {
-        sql += ` AND LOWER(project_name) LIKE ?`
-        params.push(`%${search.toLowerCase()}%`)
-    }
+    // where
+    const whereClause =
+        conditions.length > 0
+            ? `WHERE ${conditions.join(' AND ')}`
+            : ''
 
-    if (cursor) {
-        const decoded = decodeCursor(cursor)
-
-        if (sort === 'desc') {
-        sql += `
-            AND (
-                created_at < ?
-                OR (
-                    created_at = ?
-                    AND project_id < ?
-                )
-            )
-        `
-
-        params.push(
-            decoded.created_at,
-            decoded.created_at,
-            decoded.project_id
-        )
-        } else {
-        sql += `
-            AND (
-                created_at > ?
-                OR (
-                    created_at = ?
-                    AND project_id > ?
-                )
-            )
-        `
-
-        params.push(
-            decoded.created_at,
-            decoded.created_at,
-            decoded.project_id
-        )
-        }
-    }
-
-    // STABLE ORDER
-    sql += `
-        ORDER BY created_at ${sort}, project_id ${sort}
-        LIMIT ${limit}
+    // order
+    const orderBy = `
+        ORDER BY p.${sortBy} ${sortDir}, p.project_id ${sortDir}
     `
 
-    params.push(limit + 1)
+    // query
+    const query = `
+        SELECT
+            p.project_id,
+            p.workspace_id,
+            p.project_name,
+            p.project_description,
+            p.created_at,
+            p.status,
+            p.created_by,
+            w.workspace_name
+        FROM project p
+        JOIN workspace w
+            ON w.workspace_id = p.workspace_id
+        ${whereClause}
+        ${orderBy}
+        LIMIT ? OFFSET ?
+    `
 
-    // fake db result
-    const [rows]: any[] = await pool.query(sql, params)
+    params.push(limit, offset)
 
-    let nextCursor: string | null = null
+    const [rows]: any = await pool.query(query, params)
 
-    // detect next page
-    const hasMore = rows.length > limit
+    // response
+    const totalCountQuery = `
+        SELECT COUNT(*) as count
+        FROM project p
+        ${whereClause}
+    `
 
-    if (hasMore) {
-        const lastItem = rows[limit - 1]
+    const [countRows]: any = await pool.query(
+        totalCountQuery,
+        params.slice(0, params.length - 2)
+    )
 
-        nextCursor = encodeCursor({
-            created_at: lastItem.created_at,
-            project_id: lastItem.project_id,
-        })
-
-        rows.pop()
-    }
+    const total = countRows[0].count
 
     return c.json({
         data: rows,
-        pagination: {
-            limit,
-            next_cursor: nextCursor,
-            has_more: hasMore,
-        },
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasMore: offset + limit < total
     })
 
 }
