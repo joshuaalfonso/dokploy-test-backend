@@ -119,12 +119,12 @@ export const getPaginatedProjectController = async (c: any) => {
         'status'
     ]);
 
-    const sortByRaw = c.req.query('sortBy') || 'created_at'
+    const sortByRaw = c.req.query('sort') || 'created_at' 
     const sortBy = allowedSortFields.has(sortByRaw)
         ? sortByRaw
         : 'created_at'
 
-    const sortDir = c.req.query('sortDir') === 'asc' ? 'ASC' : 'DESC'
+    const order = c.req.query('order') === 'asc' ? 'ASC' : 'DESC'
 
     const conditions: string[] = [
         `p.workspace_id = ?`
@@ -158,7 +158,7 @@ export const getPaginatedProjectController = async (c: any) => {
 
     // order
     const orderBy = `
-        ORDER BY p.${sortBy} ${sortDir}, p.project_id ${sortDir}
+        ORDER BY p.${sortBy} ${order}, p.project_id ${order}
     `
 
     // query
