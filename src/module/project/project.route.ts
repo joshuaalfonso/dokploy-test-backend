@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { authMiddleware } from "../../middleware/auth.js";
 import { validator } from "../../util/validate-zod.js";
-import { createProjectController, getPaginatedProjectController, getProjectByUserController, getProjectByWorkspaceController, updateProjectController } from "./project.controller.js";
+import { createProjectController, getPaginatedProjectController, getProjectByUserController, getProjectByWorkspaceController, getSingleProjectController, updateProjectController } from "./project.controller.js";
 import { createProjectSchema, updateProjectSchema } from "./project.schema.js";
 
 
@@ -15,6 +15,7 @@ projectRoute.get(
     getPaginatedProjectController
 );
 projectRoute.get('/:workspace_id', authMiddleware ,getProjectByWorkspaceController);
+projectRoute.get('/detail/:project_id', authMiddleware ,getSingleProjectController);
 
 projectRoute.post(
     '',

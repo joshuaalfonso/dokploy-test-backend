@@ -1,7 +1,5 @@
 import { pool } from "../../config/db.js";
-import type { Project } from "./project.model.js";
-
-
+// import type { Project } from "./project.model.js";
 
 
 
@@ -78,6 +76,55 @@ export const getProjectByWorkspaceController = async (c: any) => {
         )
 
         return c.json(rows)
+
+    }
+
+    catch (err) {
+        console.log(err);
+        return c.json({
+            success: false,
+            message: 'Failed to load project'
+        })
+    }
+
+
+}
+
+
+export const getSingleProjectController = async (c: any) => {
+
+    try {
+
+        const id = c.req.param('project_id')
+
+        if (!id) {
+            throw new Error('Missing id is required')
+        }
+
+        console.log(id)
+
+        const [rows]: any[] = await pool.query(
+            `
+                SELECT 
+                    p.*,
+                    w.workspace_name
+                FROM 
+                    project p
+                LEFT JOIN
+                    workspace w 
+                ON
+                    p.workspace_id = w.workspace_id
+                WHERE
+                    p.project_id = ?
+                
+            `, [id]
+        )
+
+        console.log(rows)
+
+        return c.json({
+            ...rows[0]
+        })
 
     }
 
