@@ -11,7 +11,7 @@ export const projectRoute = new Hono();
 // projectRoute.get('', authMiddleware ,getProjectByUserController);
 projectRoute.get(
     '/paginated/:workspace_id', 
-    // authMiddleware ,
+    authMiddleware ,
     getPaginatedProjectController
 );
 projectRoute.get('/:workspace_id', authMiddleware ,getProjectByWorkspaceController);

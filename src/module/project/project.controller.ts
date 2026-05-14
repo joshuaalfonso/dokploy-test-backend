@@ -107,13 +107,24 @@ export const getSingleProjectController = async (c: any) => {
             `
                 SELECT 
                     p.*,
-                    w.workspace_name
+                    w.workspace_name,
+                    COUNT(t.task_id) AS total_task,
+                    SUM(
+                        CASE 
+                            WHEN t.status = 'completed' THEN 1
+                            ELSE 0
+                        END
+                    ) AS completed_task
                 FROM 
                     project p
                 LEFT JOIN
                     workspace w 
                 ON
                     p.workspace_id = w.workspace_id
+                LEFT JOIN 
+                    task t
+                ON 
+                    p.project_id = t.project_id
                 WHERE
                     p.project_id = ?
                 
