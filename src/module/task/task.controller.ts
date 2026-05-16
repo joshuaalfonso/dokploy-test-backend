@@ -95,7 +95,7 @@ export const createTaskController = async (c: any) => {
     
     try {
 
-        const { project_id, task_title, task_description, priority, status, due_date } = c.req.valid('json');
+        const { project_id, task_title, task_description, priority, status, due_date, task_assignee } = c.req.valid('json');
 
         const user = c.get("user"); 
 
@@ -111,6 +111,20 @@ export const createTaskController = async (c: any) => {
             VALUES (?, ?, ?, ?, ?, ?, ?)
 
         `, [project_id, task_title, task_description, priority, status, due_date, user.user_id]);
+
+        const task_id = rows.insertId;
+
+        if (!task_id) {
+            throw new Error('No task id found')
+        }
+
+        for (const item of task_assignee) {
+            await conn.query(`
+                INSERT INTO
+                    task_assignee (task_id, user_id)
+                VALUES (?, ?)
+            `, [task_id, item]);
+        }
 
 
         await conn.commit();

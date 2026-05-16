@@ -10,5 +10,6 @@ export const createTaskSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'urgent']),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
     message: "Due date must be in YYYY-MM-DD format",
-    })
+    }),
+  task_assignee: z.array(z.string())
 })
