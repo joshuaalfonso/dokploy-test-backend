@@ -42,7 +42,7 @@ export const getProjectByUserController = async (c: any) => {
         return c.json({
             success: false,
             message: 'Failed to load project'
-        })
+        }, 500)
     }
 
 
@@ -84,7 +84,73 @@ export const getProjectByWorkspaceController = async (c: any) => {
         return c.json({
             success: false,
             message: 'Failed to load project'
+        }, 500)
+    }
+
+
+}
+
+
+export const getProjectTimelineByUserController = async (c: any) => {
+
+
+    try {
+
+        const id = c.req.param('project_id')
+
+        if (!id) {
+            throw new Error('Missing id is required')
+        }
+
+
+        const [rows]: any[] = await pool.query(
+            `
+                SELECT 
+                    pm.user_id,
+                    pm.full_name,
+                    pm.email,
+
+                    pt.id AS task_id,
+                    pt.name AS task_name,
+                    pt.start_date,
+                    pt.end_date,
+                    pt.status,
+                    pt.percent,
+
+                    CASE 
+                        WHEN pt.status = 'todo' THEN '#94A3B8'
+                        WHEN pt.status = 'in_progress' THEN '#3B82F6'
+                        WHEN pt.status = 'for_review' THEN '#F59E0B'
+                        WHEN pt.status = 'completed' THEN '#22C55E'
+                        ELSE '#94A3B8'
+                    END AS color
+
+                FROM 
+                    project_member pm
+                JOIN 
+                    user u 
+                ON 
+                    u.user_id = pm.user_id
+                WHERE 
+                    pt.project_id = ?
+                ORDER BY 
+                    pm.user_id;
+                
+            `, [id]
+        )
+
+        return c.json({
+            ...rows[0]
         })
+
+    }
+
+    catch (err) {
+        console.log(err);
+        return c.json({
+            success: false,
+            message: 'Failed to load data'
+        }, 500)
     }
 
 
@@ -101,7 +167,6 @@ export const getSingleProjectController = async (c: any) => {
             throw new Error('Missing id is required')
         }
 
-        console.log(id)
 
         const [rows]: any[] = await pool.query(
             `
@@ -126,12 +191,10 @@ export const getSingleProjectController = async (c: any) => {
                 ON 
                     p.project_id = t.project_id
                 WHERE
-                    p.project_id = ?
+                    p.project_id = ? 
                 
             `, [id]
         )
-
-        console.log(rows)
 
         return c.json({
             ...rows[0]
@@ -144,7 +207,57 @@ export const getSingleProjectController = async (c: any) => {
         return c.json({
             success: false,
             message: 'Failed to load project'
-        })
+        }, 500)
+    }
+
+
+}
+
+
+export const getProjectMemberController = async (c: any) => {
+
+
+    try {
+
+        const id = c.req.param('project_id')
+
+        if (!id) {
+            throw new Error('Missing id is required')
+        }
+
+        const [rows]: any[] = await pool.query(
+            `
+                SELECT 
+                    pm.*,
+                    p.project_name,
+                    u.full_name,
+                    u.email
+                FROM 
+                    project_member pm
+                LEFT JOIN
+                    project p
+                ON
+                    pm.project_id = p.project_id
+                LEFT JOIN
+                    user u
+                ON
+                    pm.user_id = u.user_id
+                WHERE
+                    pm.project_id = ?
+                
+            `, [id]
+        )
+
+        return c.json(rows)
+
+    }
+
+    catch (err) {
+        console.log(err);
+        return c.json({
+            success: false,
+            message: 'Failed to load project member'
+        }, 500)
     }
 
 
@@ -229,10 +342,48 @@ export const getPaginatedProjectController = async (c: any) => {
             p.created_at,
             p.status,
             p.created_by,
-            w.workspace_name
-        FROM project p
-        JOIN workspace w
-            ON w.workspace_id = p.workspace_id
+            w.workspace_name,
+            COALESCE(tt.total_task, 0) AS total_task,
+            COALESCE(tt.completed_task, 0) AS completed_task,
+            COALESCE(
+                ROUND(
+                    (COALESCE(tt.completed_task, 0) / NULLIF(tt.total_task, 0)) * 100
+                ),
+                0
+            ) AS completion_percentage,
+             COALESCE(m.members, '') AS project_member
+        FROM 
+            project p
+        JOIN 
+            workspace w
+        ON 
+            w.workspace_id = p.workspace_id
+        LEFT JOIN (
+            SELECT
+                t.project_id,
+                COUNT(*) AS total_task,
+                SUM(t.status = 'completed') AS completed_task
+            FROM 
+                task t
+            GROUP BY 
+                t.project_id
+        ) tt
+            ON tt.project_id = p.project_id
+        LEFT JOIN (
+            SELECT
+                pm.project_id,
+                GROUP_CONCAT(u.full_name SEPARATOR ', ') AS members
+            FROM 
+                project_member pm
+            JOIN 
+                user u
+            ON 
+                u.user_id = pm.user_id
+            GROUP BY 
+                pm.project_id
+        ) m
+        ON 
+            m.project_id = p.project_id
         ${whereClause}
         ${orderBy}
         LIMIT ? OFFSET ?
@@ -274,7 +425,7 @@ export const createProjectController = async (c: any) => {
     
     try {
 
-        const { workspace_id, project_name, project_description, status } = c.req.valid('json');
+        const { workspace_id, project_name, project_description, status, project_member } = c.req.valid('json');
 
         const user = c.get("user"); 
 
@@ -297,16 +448,24 @@ export const createProjectController = async (c: any) => {
             throw new Error('No project id found')
         }
 
-        await conn.query(`
-            INSERT INTO
-                project_member (project_id, user_id, role)
-            VALUES (?, ?, ?)
-        `, [project_id, user.user_id, 'manager']);
+        for (const item of project_member) {
+            await conn.query(`
+                INSERT INTO
+                    project_member (project_id, user_id, role)
+                VALUES (?, ?, ?)
+            `, [project_id, item.user_id, item.role]);
+        }
+
+        // await conn.query(`
+        //     INSERT INTO
+        //         project_member (project_id, user_id, role)
+        //     VALUES (?, ?, ?)
+        // `, [project_id, user.user_id, 'manager']);
 
         await conn.commit();
 
         return c.json({
-            success: false,
+            success: true,
             message: `Project '${project_name}' is created`
         })
 
