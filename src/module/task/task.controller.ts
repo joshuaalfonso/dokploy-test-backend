@@ -55,7 +55,22 @@ export const getTaskByProjectController = async (c: any) => {
                     t.*,
                     p.project_name,
                     u.full_name,
-                    u.email
+                    u.email,
+                    COALESCE(
+                        CONCAT(
+                            '[',
+                            GROUP_CONCAT(
+                                DISTINCT JSON_OBJECT(
+                                    'user_id', au.user_id,
+                                    'full_name', au.full_name,
+                                    'email', au.email
+                                )
+                            ),
+                            ']'
+                        ),
+                        '[]'
+                    ) AS assignees
+                    
                 FROM 
                     task t
                 LEFT JOIN
@@ -66,13 +81,25 @@ export const getTaskByProjectController = async (c: any) => {
                     user u 
                 ON
                     t.created_by = u.user_id
+                LEFT JOIN task_assignee ta
+                    ON t.task_id = ta.task_id
+
+                LEFT JOIN user au
+                    ON ta.user_id = au.user_id
                 WHERE
                     p.project_id = ?
+                GROUP BY t.task_id
+                ORDER BY t.created_at DESC
                 
             `, [id]
         )
 
-        return c.json(rows)
+        const tasks = rows.map((task: any) => ({
+            ...task,
+            assignees: JSON.parse(task.assignees || '[]')
+        }));
+
+        return c.json(tasks)
 
     }
 
